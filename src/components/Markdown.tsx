@@ -12,6 +12,7 @@ import rehypeHighlight from 'rehype-highlight';
 import type { Element, ElementContent, Root, RootContent } from 'hast';
 import { slugify } from '../lib/reading';
 import { openLightbox } from '../lib/lightbox';
+import { parseImageAlt, imageSizeStyle } from '../lib/imageSize';
 
 interface MarkdownProps {
   children: string;
@@ -120,14 +121,18 @@ const MD_COMPONENTS = {
     );
   },
   // 图片可点放大：光标提示 + 派发灯箱事件
-  img: ({ src, alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
-    <img
-      src={src} alt={alt} {...props} loading="lazy" decoding="async"
-      style={{ width: '100%', aspectRatio: 'auto 16 / 10', ...props.style }}
-      className="oasis-markdown-image cursor-zoom-in transition-opacity duration-300 hover:opacity-90"
-      onClick={() => typeof src === 'string' && openLightbox(src, alt)}
-    />
-  ),
+  // 宽度写在 alt 末尾 `![说明|50](url)`（lib/imageSize.ts）；没写就限高自适应，竖拍照片不再占满几屏
+  img: ({ src, alt: rawAlt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => {
+    const { alt, width } = parseImageAlt(rawAlt);
+    return (
+      <img
+        src={src} alt={alt} {...props} loading="lazy" decoding="async"
+        style={{ display: 'block', ...imageSizeStyle(width), ...props.style }}
+        className="oasis-markdown-image cursor-zoom-in transition-opacity duration-300 hover:opacity-90"
+        onClick={() => typeof src === 'string' && openLightbox(src, alt)}
+      />
+    );
+  },
   pre: CodeBlock as unknown as React.FC,
 };
 

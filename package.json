@@ -31,6 +31,7 @@
     "init-tailwind": "tailwindcss init -p"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.8.0",
     "@fontsource/eb-garamond": "^5.2.7",
     "@fontsource/homemade-apple": "^5.3.0",
     "@fontsource/im-fell-english": "^5.3.0",

@@ -8,6 +8,8 @@
 //   单独成 chunk，由 OasisGallery 懒加载，不进阅读页。
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useEditor, useEditorState, EditorContent, type Editor } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
+import { mergeAttributes } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import Image from '@tiptap/extension-image';
@@ -17,6 +19,17 @@ import { Placeholder } from '@tiptap/extensions';
 import { readCoverChoice, writeCoverChoice } from '../../lib/coverImage';
 import { hasLossySyntax, unescapeOasis, toBody } from '../../lib/richMarkdown';
 import { uploadPostImage, imageFilesOf } from '../../lib/uploadImage';
+import { IMAGE_SIZES, parseImageAlt, withImageWidth, imageSizeStyle } from '../../lib/imageSize';
+
+// 图片宽度存在 alt 末尾（`说明|50`），编辑器里按它画出同样的大小，和阅读舱一致
+const SizedImage = Image.extend({
+  renderHTML({ HTMLAttributes }) {
+    const { alt, width } = parseImageAlt(HTMLAttributes.alt as string | undefined);
+    const style = Object.entries(imageSizeStyle(width)).map(([k, v]) => `${k.replace(/[A-Z]/g, c => '-' + c.toLowerCase())}:${v}`).join(';');
+    return ['img', mergeAttributes(HTMLAttributes, { alt, style })];
+  },
+});
+const SIZE_LABEL: Record<number, string> = { 25: '小', 50: '中', 75: '大', 100: '满' };
 
 interface Props {
   value: string;
@@ -76,7 +89,7 @@ export const RichEditor: React.FC<Props> = ({ value, onChange, onSubmit, onReque
         link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer' } },
       }),
       Markdown,
-      Image.configure({ inline: false, allowBase64: false }),
+      SizedImage.configure({ inline: false, allowBase64: false }),
       TableKit.configure({ table: { resizable: false } }),
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -140,6 +153,7 @@ export const RichEditor: React.FC<Props> = ({ value, onChange, onSubmit, onReque
       quote: ed.isActive('blockquote'), bullet: ed.isActive('bulletList'), ordered: ed.isActive('orderedList'), task: ed.isActive('taskList'),
       codeBlock: ed.isActive('codeBlock'), link: ed.isActive('link'), table: ed.isActive('table'),
       canUndo: ed.can().undo(), canRedo: ed.can().redo(),
+      imageWidth: ed.isActive('image') ? parseImageAlt(ed.getAttributes('image').alt).width : null,
     } : null,
   });
 
@@ -213,6 +227,26 @@ export const RichEditor: React.FC<Props> = ({ value, onChange, onSubmit, onReque
           <button type="button" onClick={() => setError('')} aria-label="关闭">✕</button>
         </div>
       )}
+      {/* 选中图片时浮出：小 / 中 / 大 / 满 / 自适应 */}
+      <BubbleMenu editor={editor} pluginKey="oasisImageSize" shouldShow={({ editor: ed }) => ed.isActive('image')}
+        options={{ placement: 'top' }}
+        className="flex items-center gap-0.5 p-1 rounded-full bg-white/95 dark:bg-[#111827]/95 border border-slate-200/80 dark:border-white/10 shadow-lg backdrop-blur-md">
+        {IMAGE_SIZES.map(w => (
+          <button key={w} type="button" onMouseDown={e => e.preventDefault()}
+            onClick={() => c().updateAttributes('image', { alt: withImageWidth(editor.getAttributes('image').alt, w) }).run()}
+            className={`px-3 h-7 rounded-full font-mono text-[11px] transition-colors ${s?.imageWidth === w ? 'bg-[#39C5BB] text-white' : 'text-slate-500 hover:text-[#39C5BB]'}`}>
+            {SIZE_LABEL[w]}
+          </button>
+        ))}
+        <button type="button" onMouseDown={e => e.preventDefault()}
+          onClick={() => c().updateAttributes('image', { alt: withImageWidth(editor.getAttributes('image').alt, null) }).run()}
+          className={`px-3 h-7 rounded-full font-mono text-[11px] transition-colors ${s && s.imageWidth == null ? 'bg-[#39C5BB] text-white' : 'text-slate-500 hover:text-[#39C5BB]'}`}>
+          自适应
+        </button>
+        <span className="w-px h-4 mx-1 bg-slate-200 dark:bg-white/10" aria-hidden />
+        <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => c().deleteSelection().run()}
+          className="px-3 h-7 rounded-full font-mono text-[11px] text-slate-400 hover:text-rose-400 transition-colors">删除</button>
+      </BubbleMenu>
       <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar" onClick={e => { if (e.target === e.currentTarget) editor.commands.focus('end'); }}>
         <EditorContent editor={editor} />
       </div>
