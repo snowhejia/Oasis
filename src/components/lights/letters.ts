@@ -1,6 +1,7 @@
 // ✉️ 尺牍的内容：每位邻居一封信（八行笺上写什么），外加一只「虚席以待」的空信封。
 //   引擎（letterScene.ts）只管画，写什么在这里定。落款＝结邻那天的干支与节气，不写农历日（省得算错）。
 import type { FriendLink } from '../../data/friends';
+import type { SiteProfile } from '../../hooks/useSiteProfile';
 
 export type Motif = 'bird' | 'spray' | 'blossom';
 
@@ -20,13 +21,15 @@ export interface Letter {
   cols: LetterCol[];
 }
 
-/** 自家名帖：虚席回帖里那一行，交换友链时可复制 */
-export const SELF = {
-  name: 'Oasis · Bob Lee 的小站',
-  desc: '一处温柔疗愈、带着禅意的数字花园。',
-  mail: 'lb15058460816@gmail.com',
+/** 自家名帖：虚席回帖里那一行，交换友链时可复制。名字 / 简介 / 邮箱来自站主档案（useSiteProfile），可在网站上编辑 */
+export interface SelfCard { name: string; desc: string; mail: string; color: string; gardener: string }
+export const selfCard = (p: Pick<SiteProfile, 'name' | 'siteDesc' | 'email'>): SelfCard => ({
+  name: `Oasis · ${p.name} 的小站`,
+  desc: p.siteDesc,
+  mail: p.email,
   color: '#FFB7C5',
-};
+  gardener: p.name,
+});
 
 const TERMS: [number, number, string][] = [
   [1, 5, '小寒'], [1, 20, '大寒'], [2, 4, '立春'], [2, 18, '雨水'], [3, 5, '惊蛰'], [3, 20, '春分'],
@@ -58,7 +61,7 @@ export const hostOf = (u: string) => {
 
 const MOTIFS: Motif[] = ['bird', 'spray'];
 
-export const buildLetters = (friends: FriendLink[], selfUrl: string): Letter[] => [
+export const buildLetters = (friends: FriendLink[], selfUrl: string, SELF: SelfCard): Letter[] => [
   ...friends.map((f, i): Letter => ({
     kind: 'friend', name: f.name, url: f.url, host: hostOf(f.url), desc: f.desc, color: f.color, motif: MOTIFS[i % MOTIFS.length],
     cols: [
@@ -69,6 +72,6 @@ export const buildLetters = (friends: FriendLink[], selfUrl: string): Letter[] =
   })),
   {
     kind: 'vacant', name: '虚席以待', url: selfUrl, host: hostOf(selfUrl), desc: SELF.desc, color: SELF.color, motif: 'blossom',
-    cols: [{ t: '园门常开' }, { t: '想把你的花园连过来？' }, { t: '来信' }, {}, {}, {}, { t: '绿洲园丁 Bob Lee', at: 'end' }, { t: dateLine(), at: 'end', small: true }],
+    cols: [{ t: '园门常开' }, { t: '想把你的花园连过来？' }, { t: '来信' }, {}, {}, {}, { t: `绿洲园丁 ${SELF.gardener}`, at: 'end' }, { t: dateLine(), at: 'end', small: true }],
   },
 ];

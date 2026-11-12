@@ -8,7 +8,8 @@ import { useReducedMotion } from 'framer-motion';
 import { FRIENDS } from '../data/friends';
 import { PLACE_NAME } from '../lib/places';
 import { useCoarsePointer } from '../hooks/useCoarsePointer';
-import { buildLetters, dateLine, SELF } from './lights/letters';
+import { buildLetters, dateLine, selfCard } from './lights/letters';
+import { useSiteProfile } from '../hooks/useSiteProfile';
 import { createLetterScene, hasWebGL, type LetterScene } from './lights/letterScene';
 // 字只在进这一处时才加载（随本场所的 chunk）：页面朱雀仿宋、信上志莽行书 + Homemade Apple、西文 IM Fell
 import '@free-fonts/zhuque-fangsong/zhuque-fangsong.css';
@@ -32,7 +33,9 @@ export const OasisLights = ({ isDark }: OasisLightsProps) => {
   const reduce = !!useReducedMotion();
   const coarse = useCoarsePointer();
   const selfUrl = typeof window !== 'undefined' ? `${window.location.origin}/` : '/';
-  const letters = useMemo(() => buildLetters(FRIENDS, selfUrl), [selfUrl]);
+  const profile = useSiteProfile();
+  const SELF = useMemo(() => selfCard(profile), [profile]);
+  const letters = useMemo(() => buildLetters(FRIENDS, selfUrl, SELF), [selfUrl, SELF]);
   const [gl, setGl] = useState(hasWebGL);
   const [ready, setReady] = useState(false);
   const [reading, setReading] = useState(-1);

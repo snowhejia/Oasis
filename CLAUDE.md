@@ -49,7 +49,7 @@ React 19 + Vite 8 + TypeScript + Tailwind CSS 4 + Framer Motion 单页应用。�
 - [lib/solarTerms.ts](src/lib/solarTerms.ts) 二十四节气、[lib/timeContext.ts](src/lib/timeContext.ts) 时段判断(深夜=23:00–4:59)、[data/quotes.ts](src/data/quotes.ts) 语录、[data/friends.ts](src/data/friends.ts) 友链。
 
 ## Supabase
-- 建表脚本:[supabase/garden_posts.sql](supabase/garden_posts.sql)、[supabase/garden_categories.sql](supabase/garden_categories.sql)、[supabase/post_resonances.sql](supabase/post_resonances.sql)、[supabase/track_felt.sql](supabase/track_felt.sql)（曲目 felt，仅园丁可读写）。RLS:公开内容所有人可读,写入仅限 `is_gardener()`(站主邮箱白名单);留言表匿名可 insert(服务端限长 + 禁 `[_REPLY_]` 标记防伪造站主回复),改删仅园丁。不建表应用也能跑(纯 localStorage)。
+- 建表脚本:[supabase/garden_posts.sql](supabase/garden_posts.sql)、[supabase/garden_categories.sql](supabase/garden_categories.sql)、[supabase/post_resonances.sql](supabase/post_resonances.sql)、[supabase/track_felt.sql](supabase/track_felt.sql)（曲目 felt，仅园丁可读写）。[supabase/site_profile.sql](supabase/site_profile.sql)（站主档案单行 JSON + Storage 公开桶 `site-assets` 放头像；前端 [useSiteProfile.ts](src/hooks/useSiteProfile.ts) 模块级单例，档案弹窗里登录后点 Edit 用 `garden/ProfileEditor.tsx` 编辑；名字/身份/签名/介绍/Now/兴趣/链接都读它，别再写死在组件里）。RLS:公开内容所有人可读,写入仅限 `is_gardener()`(站主邮箱白名单);留言表匿名可 insert(服务端限长 + 禁 `[_REPLY_]` 标记防伪造站主回复),改删仅园丁。不建表应用也能跑(纯 localStorage)。
 
 ## 曲目档案与工坊(详见 docs/music-design.md)
 - `music-data/tracks/<id>.json`(进 git):顶层是站主写的(intro / note / mood / relations / lyrics.outroMs / lyrics.readings),`sources.*` 是导入层(`npm run music:netease`、工坊网页导入);`sources.draft` 是据网络资料与歌词起草的草稿层,**已生效**(人标 > 草稿 > 导入 > 自动 > 专辑默认,出处 `draft`,曲目卡署「网络资料整理」;`profile-merge.mjs` 的 `DRAFT_LAYER` 可关),工坊里只校不填。专辑叙事与心境默认在 `music-data/albums/<slug>.json`(原 lyrics-config/albums 已迁入,translate-lyrics 改读这里)。

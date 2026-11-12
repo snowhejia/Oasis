@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { layerVariants, reducedLayerVariants, BLOOM_EASE, type RippleOrigin } from './lib/transitions';
 import { useAuth } from './hooks/useAuth';
+import { useSiteProfile } from './hooks/useSiteProfile';
 import { useGarden, filterVisible } from './hooks/useGarden';
 import { playBGM, getPlayerSnapshot, switchTrack, PLAYLIST } from './hooks/useSoundscape';
 import { useHashRoute, parseHash } from './lib/route';
@@ -260,6 +261,7 @@ const RippleBloom = ({ origin, view }: { origin: RippleOrigin; view: AppView }) 
 
 function App() {
   const { isAdmin, logout } = useAuth();
+  const siteProfile = useSiteProfile();
 
   const { route, navigate } = useHashRoute();
 
@@ -472,7 +474,7 @@ function App() {
         <AnimatePresence mode="wait">
           {terminalStatus === 'checking' && <motion.div key="checking" className="absolute inset-0 bg-[#050505] z-50" exit={{ opacity: 0, transition: { duration: 1 } }} />}
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView === 'welcome' && (
-            <OasisGarden key="garden" visitorName={effectiveIsAdmin ? "Bob Lee" : (getVisitorAlias() ?? "Visitor")} isReturningUser={effectiveIsAdmin || getVisitorAlias() !== null} onEnterGarden={() => handleViewChange('garden')} onOpenScroll={() => handleViewChange('yuantu')} />
+            <OasisGarden key="garden" visitorName={effectiveIsAdmin ? siteProfile.name : (getVisitorAlias() ?? "Visitor")} isReturningUser={effectiveIsAdmin || getVisitorAlias() !== null} onEnterGarden={() => handleViewChange('garden')} onOpenScroll={() => handleViewChange('yuantu')} />
           )}
           {terminalStatus === 'granted' && bgPhase === 'zen' && appView !== 'welcome' && (
             <motion.div key="oasis-arena" className="w-full h-full flex items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.9, ease: [0.32, 0.72, 0, 1] } }} exit={{ opacity: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.9, 0.2] } }}>

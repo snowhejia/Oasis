@@ -26,6 +26,8 @@ import { emitRipple } from '../lib/rippleSignal';
 import { tagKey, buildTagCanonicalMap } from '../lib/tags';
 import { AURA_COLORS } from '../lib/aura';
 import { resolveCover } from '../lib/coverImage';
+import { useSiteProfile } from '../hooks/useSiteProfile';
+import { ProfileEditor } from './garden/ProfileEditor';
 
 // 📝 默认写作模板：内置类型的温柔骨架，可被自定义模板覆盖；自定义分类默认无骨架
 const DEFAULT_TEMPLATES: Record<string, string> = {
@@ -638,6 +640,10 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
   const [replyInput, setReplyInput] = useState('');
 
   const [showProfile, setShowProfile] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const profile = useSiteProfile();
+  // 每次打开都先看到档案本身，而不是上次没收起的编辑态
+  const openProfile = () => { setEditingProfile(false); setShowProfile(true); };
 
   // 🔗 摘下本文直链：复制 /p/:id（服务端渲染的分享页，见 api/post.ts）而非 hash 路由——
   //   分享到微信/Twitter/Slack 等平台时，对方抓取的是这条链接的静态 meta/OG，
@@ -1217,7 +1223,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}>
                 <motion.div
                   className="relative w-[84px] h-[84px] mb-5 group cursor-pointer"
-                  onClick={() => setShowProfile(true)}
+                  onClick={openProfile}
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.95 }}
                 >
@@ -1225,23 +1231,23 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                   <span aria-hidden className="absolute inset-0 rounded-full border border-[#39C5BB]/50 opacity-0 group-hover:animate-[oasis-ripple_1.8s_ease-out_infinite]" />
                   <span aria-hidden className="absolute inset-0 rounded-full border border-[#FFB7C5]/45 opacity-0 group-hover:animate-[oasis-ripple_1.8s_ease-out_0.45s_infinite]" />
                   <div className="relative w-full h-full rounded-full border border-white/70 dark:border-white/15 overflow-hidden shadow-lg bg-white/20 dark:bg-white/5 backdrop-blur-sm transition-colors duration-[1500ms] ease-in-out">
-                    <img src="/avatar.jpg" alt="Curator" className="w-full h-full object-cover opacity-90 mix-blend-luminosity group-hover:mix-blend-normal transition-all duration-1000" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover opacity-90 mix-blend-luminosity group-hover:mix-blend-normal transition-all duration-1000" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   </div>
                 </motion.div>
               </motion.div>
 
               {/* 名字：无卡束缚，尺寸更从容 */}
-              <motion.h1 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.27, ease: [0.16, 1, 0.3, 1] }} className="font-serif text-[2.2rem] leading-none text-slate-700 dark:text-slate-100 mb-3 tracking-wide transition-colors duration-[1500ms] ease-in-out">Bob Lee</motion.h1>
+              <motion.h1 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.27, ease: [0.16, 1, 0.3, 1] }} className="font-serif text-[2.2rem] leading-none text-slate-700 dark:text-slate-100 mb-3 tracking-wide transition-colors duration-[1500ms] ease-in-out">{profile.name}</motion.h1>
 
               {/* 身份行 */}
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.39, ease: [0.16, 1, 0.3, 1] }} className="mb-5 font-mono text-[10px] tracking-[0.2em] uppercase">
-                <span className="text-[#39C5BB]">Full-Stack Craftsman</span>
-                <span className="text-slate-400 dark:text-slate-500"> · CS @ UNSW</span>
+                {profile.role && <span className="text-[#39C5BB]">{profile.role}</span>}
+                {profile.affiliation && <span className="text-slate-400 dark:text-slate-500">{profile.role ? ' · ' : ''}{profile.affiliation}</span>}
               </motion.div>
 
               {/* 签名引言：从档案弹窗移驻主栏，比头衔更贴近人 */}
               <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.51, ease: [0.16, 1, 0.3, 1] }} className="font-serif italic text-[13px] leading-[1.85] text-slate-500 dark:text-slate-400 mb-7 px-2 transition-colors duration-[1500ms] ease-in-out">
-                “Exploring the intersection of human behavior, aesthetics &amp; software architecture.”
+                {profile.quote && <>“{profile.quote}”</>}
               </motion.p>
 
               {/* 短 hairline：碑文式的轻分隔，与右栏月份线同语言 */}
@@ -1259,9 +1265,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
 
               {/* 底部一行收纳：链接 + 档案入口 */}
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.1, delay: 0.87, ease: [0.16, 1, 0.3, 1] }} className="flex items-center gap-7 pointer-events-auto">
-                <a href="https://github.com/BobLee-tech" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><GithubIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">GitHub</span></a>
-                <a href="mailto:lb15058460816@gmail.com" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><MailIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">Mail</span></a>
-                <button onClick={() => setShowProfile(true)} className="font-mono text-[10px] tracking-[0.2em] uppercase text-slate-400/80 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors">Profile →</button>
+                {profile.github && <a href={profile.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><GithubIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">GitHub</span></a>}
+                {profile.email && <a href={`mailto:${profile.email}`} className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><MailIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">Mail</span></a>}
+                <button onClick={openProfile} className="font-mono text-[10px] tracking-[0.2em] uppercase text-slate-400/80 hover:text-[#39C5BB] dark:hover:text-[#39C5BB] transition-colors">Profile →</button>
               </motion.div>
             </div>
           </motion.div>
@@ -1275,11 +1281,11 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
               {/* 📱 移动端身份条：小屏没有左栏时，报头上方一行轻量署名，点击展开完整档案。
                   已经报过一次「我是谁」，下方报头在移动端不必再报「这是什么」——只留一行坐标即可，
                   让第一张卡片尽快出现在折叠线之上。 */}
-              <button onClick={() => setShowProfile(true)} className="lg:hidden flex items-center justify-center gap-3 mb-4 mx-auto group">
+              <button onClick={openProfile} className="lg:hidden flex items-center justify-center gap-3 mb-4 mx-auto group">
                 <span className="w-9 h-9 rounded-full overflow-hidden border border-white/60 dark:border-white/10 shadow-sm shrink-0 bg-white/20 dark:bg-white/5">
-                  <img src="/avatar.jpg" alt="Bob Lee" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 </span>
-                <span className="font-serif text-lg text-slate-600 dark:text-slate-200 transition-colors duration-[1500ms]">Bob Lee</span>
+                <span className="font-serif text-lg text-slate-600 dark:text-slate-200 transition-colors duration-[1500ms]">{profile.name}</span>
                 <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-slate-400/80 group-hover:text-[#39C5BB] transition-colors">Profile →</span>
               </button>
 
@@ -1884,7 +1890,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                         {res.reply && (
                           <div className="mt-5 pt-4 border-t border-slate-200/50 dark:border-white/10 border-dashed transition-colors duration-[1500ms]">
                             <div className="flex items-center gap-2 mb-2 pl-5">
-                              <div className="w-4 h-4 rounded-full overflow-hidden border border-[#39C5BB]/30"><img src="/avatar.jpg" alt="Bob" className="w-full h-full object-cover"/></div>
+                              <div className="w-4 h-4 rounded-full overflow-hidden border border-[#39C5BB]/30"><img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover"/></div>
                               <span className="font-serif text-xs text-[#39C5BB]">站主回复</span>
                             </div>
                             <p className="font-serif text-slate-500 dark:text-slate-400 text-sm leading-[1.8] pl-5 border-l-2 border-[#39C5BB]/40 transition-colors duration-[1500ms]">
@@ -1984,68 +1990,77 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
 
+              {isAdmin && !editingProfile && (
+                <button onClick={() => setEditingProfile(true)} className="absolute top-7 left-7 z-20 font-mono text-[10px] tracking-[0.2em] uppercase text-slate-400 hover:text-[#39C5BB] transition-colors">Edit</button>
+              )}
+
+              {editingProfile ? (
+                <ProfileEditor initial={profile} onDone={() => setEditingProfile(false)} />
+              ) : (<>
               {/* 头部：居中 */}
               <div className="flex flex-col items-center text-center z-10">
                 <div className="w-28 h-28 rounded-full border border-white/70 dark:border-white/15 shadow-xl overflow-hidden mb-6 transition-colors duration-1000">
-                  <img src="/avatar.jpg" alt="Bob Lee" className="w-full h-full object-cover" />
+                  <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />
                 </div>
-                <h2 className="font-serif text-3xl text-slate-800 dark:text-slate-100 mb-2 transition-colors">Bob Lee</h2>
-                <p className="font-mono text-xs tracking-[0.2em] text-[#39C5BB] uppercase">Full-Stack Craftsman</p>
-                <p className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mt-1.5">CS @ UNSW · Sydney</p>
+                <h2 className="font-serif text-3xl text-slate-800 dark:text-slate-100 mb-2 transition-colors">{profile.name}</h2>
+                {profile.role && <p className="font-mono text-xs tracking-[0.2em] text-[#39C5BB] uppercase">{profile.role}</p>}
+                {(profile.affiliation || profile.location) && (
+                  <p className="font-mono text-[10px] tracking-[0.2em] text-slate-400 dark:text-slate-500 uppercase mt-1.5">{[profile.affiliation, profile.location].filter(Boolean).join(' · ')}</p>
+                )}
 
                 {/* 签名引言 */}
-                <p className="font-serif italic text-slate-500 dark:text-slate-400 text-sm leading-relaxed mt-6 px-2 transition-colors">
-                  “Exploring the intersection of human behavior, aesthetics &amp; software architecture.”
-                </p>
+                {profile.quote && (
+                  <p className="font-serif italic text-slate-500 dark:text-slate-400 text-sm leading-relaxed mt-6 px-2 transition-colors">
+                    “{profile.quote}”
+                  </p>
+                )}
               </div>
 
               {/* 正文：左对齐，可读性更好 */}
-              <div className="z-10 mt-8 text-left">
-                <p className="font-serif text-slate-600 dark:text-slate-300 leading-relaxed text-sm transition-colors">
-                  A 20-year-old computer science undergraduate at UNSW-Sydney. Dedicated to building elegant architectures and non-competitive digital spaces — where craft, calm and curiosity matter more than the race.
-                </p>
-              </div>
+              {profile.bio && (
+                <div className="z-10 mt-8 text-left">
+                  <p className="font-serif text-slate-600 dark:text-slate-300 leading-relaxed text-sm whitespace-pre-line transition-colors">
+                    {profile.bio}
+                  </p>
+                </div>
+              )}
 
               {/* Now：最近在做什么，每次回访都有新东西看 */}
-              <div className="z-10 mt-8 text-left">
-                <div className="font-mono text-[9px] tracking-[0.25em] text-[#39C5BB]/80 uppercase mb-3">Now</div>
-                <ul className="flex flex-col gap-2.5">
-                  {[
-                    { k: 'Building', v: 'Oasis — a quiet digital garden' },
-                    { k: 'Reading', v: 'Designing Data-Intensive Applications' },
-                    { k: 'Learning', v: 'C++ systems & AI agents' },
-                  ].map(item => (
-                    <li key={item.k} className="flex items-baseline gap-3 text-sm">
-                      <span className="font-mono text-[9px] tracking-[0.15em] uppercase text-slate-400 dark:text-slate-500 w-16 shrink-0">{item.k}</span>
-                      <span className="font-serif text-slate-600 dark:text-slate-300 leading-snug transition-colors">{item.v}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {profile.now.length > 0 && (
+                <div className="z-10 mt-8 text-left">
+                  <div className="font-mono text-[9px] tracking-[0.25em] text-[#39C5BB]/80 uppercase mb-3">Now</div>
+                  <ul className="flex flex-col gap-2.5">
+                    {profile.now.map((item, i) => (
+                      <li key={i} className="flex items-baseline gap-3 text-sm">
+                        <span className="font-mono text-[9px] tracking-[0.15em] uppercase text-slate-400 dark:text-slate-500 w-16 shrink-0">{item.k}</span>
+                        <span className="font-serif text-slate-600 dark:text-slate-300 leading-snug transition-colors">{item.v}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* 兴趣标签：带一句话注解 */}
+              {profile.interests.length > 0 && (
               <div className="z-10 mt-8 text-left">
                 <div className="font-mono text-[9px] tracking-[0.25em] text-[#39C5BB]/80 uppercase mb-3">Interests</div>
                 <div className="flex flex-col gap-2">
-                  {[
-                    { tag: 'C++', note: 'systems & performance' },
-                    { tag: 'AI', note: 'agents & applied LLMs' },
-                    { tag: 'Claude', note: 'daily craft companion' },
-                    { tag: 'Hatsune Miku ❤️', note: 'forever the muse' },
-                  ].map(({ tag, note }) => (
-                    <div key={tag} className="flex items-baseline gap-3">
+                  {profile.interests.map(({ tag, note }, i) => (
+                    <div key={i} className="flex items-baseline gap-3">
                       <span className="font-mono text-[9px] tracking-widest uppercase px-2.5 py-1 rounded-full bg-slate-500/[0.07] dark:bg-white/[0.07] text-slate-500 dark:text-slate-400 transition-colors duration-1000 shrink-0">{tag}</span>
                       <span className="font-serif italic text-xs text-slate-400 dark:text-slate-500">{note}</span>
                     </div>
                   ))}
                 </div>
               </div>
+              )}
 
               {/* 链接矩阵 */}
               <div className="z-10 mt-8 pt-6 border-t border-slate-300/40 dark:border-white/10 flex gap-8">
-                <a href="https://github.com/BobLee-tech" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><GithubIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">GitHub</span></a>
-                <a href="mailto:lb15058460816@gmail.com" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><MailIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">Mail</span></a>
+                {profile.github && <a href={profile.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><GithubIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">GitHub</span></a>}
+                {profile.email && <a href={`mailto:${profile.email}`} className="flex items-center gap-2 text-slate-400/80 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><MailIcon/> <span className="font-mono text-[10px] tracking-[0.2em] uppercase">Mail</span></a>}
               </div>
+              </>)}
             </motion.div>
           </div>
         )}
