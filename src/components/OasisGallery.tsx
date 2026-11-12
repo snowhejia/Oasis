@@ -1,5 +1,5 @@
 // src/components/OasisGallery.tsx
-import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useDeferredValue } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useDeferredValue, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
 import { useGarden, filterVisible, makeExcerpt, type BlogPost, type Growth, type PostStatus } from '../hooks/useGarden';
@@ -28,6 +28,9 @@ import { AURA_COLORS } from '../lib/aura';
 import { resolveCover } from '../lib/coverImage';
 import { useSiteProfile } from '../hooks/useSiteProfile';
 import { ProfileEditor } from './garden/ProfileEditor';
+import { uploadPostImage, imageFilesOf } from '../lib/uploadImage';
+// 所见即所得写作（Tiptap）自成一包，只有打开写作台才加载
+const RichEditor = lazy(() => import('./garden/RichEditor'));
 
 // 📝 默认写作模板：内置类型的温柔骨架，可被自定义模板覆盖；自定义分类默认无骨架
 const DEFAULT_TEMPLATES: Record<string, string> = {
@@ -42,12 +45,13 @@ const DEFAULT_TEMPLATES: Record<string, string> = {
 const TEMPLATE_STORE_KEY = 'oasis_custom_templates';
 const EDITOR_MODE_KEY = 'oasis_editor_mode';
 const SPLIT_RATIO_KEY = 'oasis_split_ratio';
-type EditorMode = 'write' | 'split' | 'preview';
+// visual = 所见即所得（默认）；write = Markdown 源码单栏；split = 源码 + 预览；preview = 只读预览
+type EditorMode = 'visual' | 'write' | 'split' | 'preview';
 const loadEditorMode = (): EditorMode => {
   try {
     const value = localStorage.getItem(EDITOR_MODE_KEY);
-    return value === 'write' || value === 'split' || value === 'preview' ? value : 'write';
-  } catch { return 'write'; }
+    return value === 'visual' || value === 'write' || value === 'split' || value === 'preview' ? value : 'visual';
+  } catch { return 'visual'; }
 };
 const loadSplitRatio = () => {
   try {
@@ -314,8 +318,32 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(s + prefix.length, s + prefix.length); });
   };
 
+  // 🖼️ Markdown 源码模式的图片上传：选图 / 粘贴 / 拖入 → 传 Supabase Storage → 在光标处插入 ![](url)
+  const mdImageInputRef = useRef<HTMLInputElement>(null);
+  const [mdUploading, setMdUploading] = useState(0);
+  const [mdUploadError, setMdUploadError] = useState('');
+  const uploadIntoSource = async (files: File[]) => {
+    if (!files.length) return;
+    setMdUploadError('');
+    setMdUploading(n => n + files.length);
+    for (const file of files) {
+      try {
+        const url = await uploadPostImage(file);
+        const ta = editorRef.current;
+        const alt = file.name.replace(/\.[^.]+$/, '').replace(/[[\]]/g, '').slice(0, 60);
+        const snippet = `\n![${alt}](${url})\n`;
+        if (ta) { const pos = ta.selectionEnd; ta.focus(); editText(ta, pos, pos, snippet); }
+        else setEditContent(prev => `${prev.replace(/\s+$/, '')}\n${snippet}`);
+      } catch (err) {
+        setMdUploadError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setMdUploading(n => n - 1);
+      }
+    }
+  };
+
   // 工具栏只存数据，点击时再调 applyFormat / applyLinePrefix（它们读 editorRef，不能在渲染期备好闭包）
-  const FORMAT_TOOLS: { label: string; title: string; wrap?: [string, string, string]; prefix?: string }[] = [
+  const FORMAT_TOOLS: { label: string; title: string; wrap?: [string, string, string]; prefix?: string; upload?: boolean }[] = [
     { label: 'B', title: '粗体 **text**', wrap: ['**', '**', 'bold'] },
     { label: 'i', title: '斜体 *text*', wrap: ['*', '*', 'italic'] },
     { label: 'S̶', title: '删除线 ~~text~~', wrap: ['~~', '~~', 'strike'] },
@@ -326,7 +354,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
     { label: '</>', title: '行内代码 `code`', wrap: ['`', '`', 'code'] },
     { label: '{ }', title: '代码块 ```', wrap: ['\n```\n', '\n```\n', 'code'] },
     { label: '🔗', title: '链接 [text](url)', wrap: ['[', '](https://)', 'text'] },
-    { label: '🖼', title: '图片 ![alt](url)', wrap: ['![', '](/img/picture.jpg)', 'alt'] },
+    { label: '🖼', title: '上传图片（也可以直接粘贴或拖进来）', upload: true },
     { label: '—', title: '分割线', prefix: '\n---\n' },
   ];
 
@@ -1012,7 +1040,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
       if (e.key === '\\') {
         e.preventDefault();
         setIsZen(false);
-        setEditorMode((mode) => mode === 'split' ? 'write' : 'split');
+        setEditorMode((mode) => mode === 'split' ? 'visual' : 'split');
       } else if (e.key === '.') {
         e.preventDefault();
         if (!window.matchMedia('(min-width: 1024px)').matches) return;
@@ -1537,7 +1565,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
             initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30, filter: 'blur(8px)' }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}>
                {!isZen && <div className="shrink-0 w-full max-w-[1720px] mx-auto px-6 md:px-8 pt-4 flex items-center justify-between">
                  <div className="flex bg-slate-200/50 dark:bg-slate-800/50 rounded-lg p-1 backdrop-blur-sm shadow-inner transition-colors duration-[1500ms] ease-in-out">
-                   {([['write', 'Write'], ['split', 'Split'], ['preview', 'Preview']] as const).map(([mode, label]) => (
+                   {([['visual', 'Write'], ['write', 'Markdown'], ['split', 'Split'], ['preview', 'Preview']] as const).map(([mode, label]) => (
                      <button key={mode} onClick={() => setEditorMode(mode)}
                        className={`px-5 py-1.5 text-[10px] tracking-[0.2em] uppercase font-mono rounded-md transition-all duration-300 ${mode === 'split' ? 'hidden lg:block' : ''} ${editorMode === mode ? 'bg-white dark:bg-slate-700 text-[#39C5BB] shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>{label}</button>
                    ))}
@@ -1580,14 +1608,26 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                      </details>
                      <AnimatePresence>{templateMsg && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="ml-4 text-[#39C5BB] normal-case tracking-normal">{templateMsg}</motion.span>}</AnimatePresence>
                    </div>}
+                   {editorMode === 'visual' ? (
+                     <div className="flex-1 min-h-0 mb-3 notranslate" translate="no">
+                       <Suspense fallback={<div className="text-slate-300 dark:text-slate-600 italic text-center mt-20 font-serif">展开稿纸…</div>}>
+                         <RichEditor value={editContent} onChange={setEditContent} onSubmit={handlePublish} hideToolbar={isZen}
+                           onRequestSource={() => setEditorMode('write')}
+                           className={`${PROSE_CLASS} prose-base md:prose-lg !leading-[1.9] !tracking-normal max-w-[46em] mx-auto`} />
+                       </Suspense>
+                     </div>
+                   ) : (<>
                    {/* ✍️ Markdown 格式工具栏：选中文字点按钮即插入对应语法 */}
                    {!isZen && <div className="flex flex-wrap items-center gap-1 mb-2 pb-2 border-b border-slate-200/60 dark:border-white/5">
                      {FORMAT_TOOLS.map(t => (
-                       <button key={t.label} type="button" onMouseDown={e => e.preventDefault()} onClick={() => (t.wrap ? applyFormat(...t.wrap) : applyLinePrefix(t.prefix ?? ''))} title={t.title}
+                       <button key={t.label} type="button" onMouseDown={e => e.preventDefault()} onClick={() => (t.upload ? mdImageInputRef.current?.click() : t.wrap ? applyFormat(...t.wrap) : applyLinePrefix(t.prefix ?? ''))} title={t.title} disabled={t.upload && mdUploading > 0}
                          className="min-w-[28px] h-6 px-2 flex items-center justify-center font-mono text-[11px] rounded-md text-slate-500 dark:text-slate-400 hover:bg-[#39C5BB]/10 hover:text-[#39C5BB] transition-colors">
-                         {t.label}
+                         {t.upload && mdUploading > 0 ? '上传中…' : t.label}
                        </button>
                      ))}
+                     <input ref={mdImageInputRef} type="file" accept="image/*" multiple className="hidden"
+                       onChange={e => { const files = Array.from(e.target.files ?? []); e.target.value = ''; void uploadIntoSource(files); }} />
+                     {mdUploadError && <button type="button" onClick={() => setMdUploadError('')} className="ml-2 text-[10px] text-rose-400 normal-case max-w-[50%] truncate" title={mdUploadError}>{mdUploadError} ✕</button>}
                      <span className="ml-auto font-mono text-[9px] tracking-widest text-slate-300 dark:text-slate-600 uppercase">Markdown · GFM · 表格/代码/任务</span>
                    </div>}
                    {/* ✍️ 写作区：write 单栏（宽屏侧挂大纲）/ split 左写右读 */}
@@ -1599,6 +1639,9 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                        <textarea ref={editorRef} value={editContent}
                          onChange={e => { setEditContent(e.target.value); followCursorLine(); }}
                          onSelect={followCursorLine} onKeyUp={followCursorLine} onKeyDown={handleEditorKeyDown}
+                         onPaste={e => { const files = imageFilesOf(e.clipboardData); if (files.length) { e.preventDefault(); void uploadIntoSource(files); } }}
+                         onDragOver={e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }}
+                         onDrop={e => { const files = imageFilesOf(e.dataTransfer); if (files.length) { e.preventDefault(); void uploadIntoSource(files); } }}
                          onPointerEnter={() => claimScrollDriver('src')} onScroll={editorMode === 'split' ? handleSourceScroll : undefined}
                          placeholder="Let your thoughts flow..." style={{ tabSize: 8 }}
                          className="w-full h-full min-w-0 bg-transparent font-serif text-lg leading-loose text-slate-600 dark:text-slate-300 outline-none resize-none placeholder:text-slate-300/50 dark:placeholder:text-slate-700 no-scrollbar transition-colors duration-[1500ms] ease-in-out" />
@@ -1623,6 +1666,7 @@ export const OasisGallery: React.FC<OasisGalleryProps> = ({ isAdmin }) => {
                        </nav>
                      )}
                    </div>
+                   </>)}
                  </>
                )}
                </div>

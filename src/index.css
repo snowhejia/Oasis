@@ -726,3 +726,32 @@ body {
     flex: none;
   }
 }
+
+/* ✍️ 所见即所得写作台（garden/RichEditor.tsx）：排版借阅读舱的 prose，这里只补编辑态才有的东西 */
+.oasis-rich { caret-color: #39C5BB; }
+.oasis-rich p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left; height: 0; pointer-events: none;
+  color: rgb(203 213 225 / 0.6);
+  font-style: italic;
+}
+.dark .oasis-rich p.is-editor-empty:first-child::before { color: rgb(51 65 85); }
+.oasis-rich img { border-radius: 1rem; max-width: 100%; height: auto; margin-left: auto; margin-right: auto; display: block; }
+.oasis-rich img.ProseMirror-selectednode { outline: 2px solid #39C5BB; outline-offset: 3px; }
+.oasis-rich ul[data-type='taskList'] { list-style: none; padding-left: 0.25em; }
+.oasis-rich ul[data-type='taskList'] li { display: flex; align-items: flex-start; gap: 0.6em; }
+.oasis-rich ul[data-type='taskList'] li > label { flex: none; margin-top: 0.35em; user-select: none; }
+.oasis-rich ul[data-type='taskList'] li > label input { accent-color: #39C5BB; }
+.oasis-rich ul[data-type='taskList'] li > div { flex: 1; min-width: 0; }
+.oasis-rich ul[data-type='taskList'] li > div > p { margin: 0; }
+.oasis-rich table { table-layout: fixed; width: 100%; }
+.oasis-rich td, .oasis-rich th { position: relative; vertical-align: top; }
+.oasis-rich .selectedCell::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: rgb(57 197 187 / 0.12);
+}
+.oasis-rich a { cursor: text; }
+.oasis-rich hr.ProseMirror-selectednode { border-color: #39C5BB; }
+.oasis-rich .ProseMirror-gapcursor:after { border-top-color: #39C5BB; }
+.oasis-rich td, .oasis-rich th { padding: 0.5em 0.75em !important; }
+.oasis-rich td > p, .oasis-rich th > p { margin: 0 !important; }
