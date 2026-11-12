@@ -8,7 +8,11 @@ interface Props {
   onDone: () => void;
 }
 
-const inputCls = 'w-full rounded-xl bg-white/60 dark:bg-white/[0.06] border border-slate-200/80 dark:border-white/10 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400/70 focus:outline-none focus:border-[#39C5BB]/70 transition-colors';
+// 宽度不写在基类里：w-full 与 w-28 同时出现时 Tailwind 按样式表顺序取胜，左格会被撑满、把右格挤没
+const baseCls = 'rounded-xl bg-white/60 dark:bg-white/[0.06] border border-slate-200/80 dark:border-white/10 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400/70 focus:outline-none focus:border-[#39C5BB]/70 transition-colors';
+const inputCls = `w-full ${baseCls}`;
+const keyCls = `w-28 shrink-0 ${baseCls}`;
+const valCls = `flex-1 min-w-0 ${baseCls}`;
 const labelCls = 'block font-mono text-[9px] tracking-[0.25em] uppercase text-[#39C5BB]/80 mb-1.5';
 const smallBtn = 'font-mono text-[10px] tracking-[0.15em] uppercase text-slate-400 hover:text-[#39C5BB] transition-colors';
 
@@ -86,9 +90,9 @@ export const ProfileEditor: React.FC<Props> = ({ initial, onDone }) => {
         <div className="flex flex-col gap-2">
           {draft.now.map((item, i) => (
             <div key={i} className="flex gap-2">
-              <input className={`${inputCls} w-28 shrink-0`} value={item.k} placeholder="Building" onChange={e => set('now', draft.now.map((x, j) => j === i ? { ...x, k: e.target.value } : x))} />
-              <input className={inputCls} value={item.v} placeholder="在做的事" onChange={e => set('now', draft.now.map((x, j) => j === i ? { ...x, v: e.target.value } : x))} />
-              <button type="button" className={smallBtn} onClick={() => set('now', draft.now.filter((_, j) => j !== i))} aria-label="删除">✕</button>
+              <input className={keyCls} value={item.k} placeholder="Building" onChange={e => set('now', draft.now.map((x, j) => j === i ? { ...x, k: e.target.value } : x))} />
+              <input className={valCls} value={item.v} placeholder="在做的事" onChange={e => set('now', draft.now.map((x, j) => j === i ? { ...x, v: e.target.value } : x))} />
+              <button type="button" className={`${smallBtn} shrink-0 px-1`} onClick={() => set('now', draft.now.filter((_, j) => j !== i))} aria-label="删除">✕</button>
             </div>
           ))}
           <button type="button" className={`${smallBtn} self-start`} onClick={() => set('now', [...draft.now, { k: '', v: '' }])}>+ 加一行</button>
@@ -101,9 +105,9 @@ export const ProfileEditor: React.FC<Props> = ({ initial, onDone }) => {
         <div className="flex flex-col gap-2">
           {draft.interests.map((item, i) => (
             <div key={i} className="flex gap-2">
-              <input className={`${inputCls} w-28 shrink-0`} value={item.tag} placeholder="标签" onChange={e => set('interests', draft.interests.map((x, j) => j === i ? { ...x, tag: e.target.value } : x))} />
-              <input className={inputCls} value={item.note} placeholder="一句话注解" onChange={e => set('interests', draft.interests.map((x, j) => j === i ? { ...x, note: e.target.value } : x))} />
-              <button type="button" className={smallBtn} onClick={() => set('interests', draft.interests.filter((_, j) => j !== i))} aria-label="删除">✕</button>
+              <input className={keyCls} value={item.tag} placeholder="标签" onChange={e => set('interests', draft.interests.map((x, j) => j === i ? { ...x, tag: e.target.value } : x))} />
+              <input className={valCls} value={item.note} placeholder="一句话注解" onChange={e => set('interests', draft.interests.map((x, j) => j === i ? { ...x, note: e.target.value } : x))} />
+              <button type="button" className={`${smallBtn} shrink-0 px-1`} onClick={() => set('interests', draft.interests.filter((_, j) => j !== i))} aria-label="删除">✕</button>
             </div>
           ))}
           <button type="button" className={`${smallBtn} self-start`} onClick={() => set('interests', [...draft.interests, { tag: '', note: '' }])}>+ 加一个</button>
